@@ -1,0 +1,2 @@
+# FredUnderscoreUnderscorelaffUnderscoreWhiteHatNinetyFourSBDWolfGanbareGoemonTwoPracticeROM
+Practice ROM for Ganbare Goemon 2: Kiteretsu Shogun McGuiness.
