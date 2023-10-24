@@ -3,7 +3,7 @@ lorom
 { ;inputs
 	!l      = $0020	
 	!r      = $0010
-     	!x      = $0040
+    !x      = $0040
 	!a      = $0080
 	!y      = $4000
 	!b      = $8000
@@ -39,13 +39,17 @@ lorom
 
     !impact_health = $1B48
 
-    !maneki_neko_counter = $1BA4
+    !kill_counter = $1BA4
 
 	!hp = $0446
 
+	!impact_autoscroller_health = $0486
+
 	!container = $04B4
 
-	!lag_counter = $7ED0F0
+	!impact_in_overworld_flag = $1ACC
+
+	!lag_counter = $7E7FF0
 }
 
 { ;game state defines
@@ -71,9 +75,11 @@ org $83C0D7 : nop #2 ; Allowing the player to reenter past stages
 
 org $83FA49 : bra $3B ; Start at the start (disables checkpoints)
 
-org $80c3f9 : nop #2 ; Castle "Start + Select" Exits
+org $80C3F9 : nop #2 ; Castle "Start + Select" Exits
 
-org $80812a : jsl infinite_resources ; Ryo and Impact Bomb Hook
+org $80812A : jsl infinite_resources ; Ryo and Impact Bomb Hook
+
+org $8AC645 : jsl print_kill_count : nop #2 ; on-enemy-kill hook
 }
 
 org $80FD40 ;bank 80 custom code location
@@ -130,13 +136,25 @@ add_items_level_select:
 
 	lda !buttons_pressed
     bit #!down
-    beq .right_not_pressed
+    beq .down_not_pressed
         
 	    ;down pressed. toggle weapon
        lda !weapon_state : inc : and #$0003 : sta !weapon_state
 
-.right_not_pressed
+.down_not_pressed
+	lda !buttons_pressed
+	bit #!up
+	beq .up_not_pressed
 
+		;up pressed. toggle health containers
+		lda !container : lsr : inc
+		cmp #$0006
+		bcc +
+		lda #$0003
++		asl : sta !container
+		sta !hp				; set health to new container value
+
+.up_not_pressed:
 	;add more checks and button combos here
 
 .select_not_pressed: ;check for start press
@@ -164,9 +182,26 @@ add_items_level_select:
     rtl
 
 .exit_impact:
+	lda !stage_state
+	cmp #$0006
+	bne +
+	; exit impact boss
 	lda #$0000 : sta !impact_health
 	lda #$0007 : sta !stage_state
-	pla
+	bra ++
++	cmp #$0004
+	bne +
+	; exit impact autoscroller
+	lda #$0000 : sta !impact_autoscroller_health : sta !impact_in_overworld_flag
+	bra ++
+
++	lda !game_state
+	cmp #!gs_stage
+	bne ++
+	; exit stage
+	lda #$0000 : sta !hp
+
+++	pla
 	rtl
 
 .armor_state:
@@ -174,12 +209,6 @@ add_items_level_select:
 	db 1, 1
 	db 2, 3
 	db 3, 5
-
-;.helmet_state
-;	db 0, 0
-;	db 1, 1
-;	db 2, 3
-;	db 3, 5
 
 .weapon_state
 	db 0, 0
@@ -253,6 +282,26 @@ update_hud:
 }
 
 {
+print_kill_count:
+	; restore hijacked instruction 1
+	inc !kill_counter
+
+	; print kill counter
+	lda !kill_counter
+	and #$0007
+
+	ora #$3760
+	sta $18E6
+
+	clc : adc #$0010
+	sta $1926
+
+	; restore hijacked instruction 2
+	lda !kill_counter
+	rtl
+}
+
+{
 clear_lag_counter:
 	lda #$0000
 	sta !lag_counter
@@ -268,11 +317,14 @@ clear_hud:
 	sta $18F8
 	sta $18FA
 	sta $18FC
+	sta $18E6
+
 
 	lda #$3770
 	sta $1938
 	sta $193A
 	sta $193C
+	sta $1926
 
 	rtl
 }
