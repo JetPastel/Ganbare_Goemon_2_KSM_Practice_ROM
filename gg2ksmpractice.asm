@@ -76,7 +76,6 @@ org $83C0D7 : nop #2 ; Allowing the player to reenter past stages
 org $83FA49 : bra $3B ; Start at the start (disables checkpoints)
 
 org $80C3BA : nop #2 ;ignore "can exit levels" check
-; org $80C3F9 : nop #2 ;ignore "has cleared this stage and is repeatable" check
 
 org $80812A : jsl infinite_resources ; Ryo and Impact Bomb Hook
 
@@ -175,10 +174,7 @@ add_items_level_select:
     bit #!x
 	bne .level_select
 
-    bit #!a
-	bne .exit_impact
-
-	;start pressed, pause the game
+	;normal start press, pause the game
 	inc ;clear zero flag so game pauses
     rts
 
@@ -186,29 +182,6 @@ add_items_level_select:
     lda #$0007 : sta !game_state
     pla ;adjust stack so rtl goes to the right place
     rtl
-
-.exit_impact:
-	lda !stage_state
-	cmp #$0006
-	bne +
-	; exit impact boss
-	lda #$0000 : sta !impact_health
-	lda #$0007 : sta !stage_state
-	bra ++
-+	cmp #$0004
-	bne +
-	; exit impact autoscroller
-	lda #$0000 : sta !impact_autoscroller_health : sta !impact_in_overworld_flag
-	bra ++
-
-+	lda !game_state
-	cmp #!gs_stage
-	bne ++
-	; exit stage
-	lda #$0000 : sta !hp
-
-++	pla
-	rtl
 
 .armor_state:
     db 0, 0
