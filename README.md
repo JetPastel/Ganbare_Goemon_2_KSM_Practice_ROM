@@ -23,14 +23,16 @@ Practice ROM for Ganbare Goemon 2: Kiteretsu Shōgun Magginesu
 
 - Level Select
   - X + Start
-  - (may cause glitches in unused levels or when used in Impact Stages)
+  - (may cause glitches when selecting unused levels or when used in Impact Stages)
 
 - Exit Any Stage
   - Start + Select
 
 ---
 
-- Infinite Ryo and Impact Bombs
+- Infinite Ryo
+
+- Infinite Impact Bombs
 
 - Disabled losing lives
 
