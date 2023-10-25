@@ -26,7 +26,7 @@ Practice ROM for Ganbare Goemon 2: Kiteretsu Shogun McGuiness
   - (may cause glitches in unused levels or when used in Impact Stages)
 
 - Exit Any Stage
-  - A + Start
+  - Start + Select
 
 ---
 
