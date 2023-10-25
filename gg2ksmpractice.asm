@@ -59,32 +59,29 @@ lorom
 }
 
 { ;hijacks / patches
-org $80C5DC : jsr add_items_level_select : nop #2 ;start press check
-
 org $80810C : jsr update_hud
+
+org $80812A : jsl infinite_resources ; Ryo and Impact Bomb Hook
+
+org $80C3BA : nop #2 ;ignore "can exit levels" check
+org $80C3DF : stz !impact_in_overworld_flag : bra exit_level ; clear impact-on-map flag and skip other checks
+org $80C402 : exit_level: ;always exit if start + select was pressed
+
+org $80C5DC : jsr add_items_level_select : nop #2 ;start press check
 
 org $80E953 : jsr clear_lag_counter
 
 org $828D4C : lda #$0999 ;add ryo to boss fights
 
-org $83F0A9 : nop #3	; don't print the flashing text for player 2
-
 org $83C0DC : jsl clear_hud : nop ; runs as soon as you select a level from the overworld
 
-org $83C0D7 : nop #2 ; Allowing the player to reenter past stages
+org $83F0A9 : nop #3	; don't print the flashing text for player 2
 
 org $83FA49 : bra $3B ; Start at the start (disables checkpoints)
-
-org $80C3BA : nop #2 ;ignore "can exit levels" check
-
-org $80812A : jsl infinite_resources ; Ryo and Impact Bomb Hook
 
 org $8AC645 : jsl print_kill_count : nop #2 ; on-enemy-kill hook
 
 org $BAFA65 : jsl mark_stages_completed
-
-org $80C3DF : stz !impact_in_overworld_flag : bra exit_level ; clear impact-on-map flag and skip other checks
-org $80C402 : exit_level: ;always exit if start + select was pressed
 }
 
 org $80FD40 ;bank 80 custom code location
