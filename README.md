@@ -1,47 +1,53 @@
-# FredUnderscoreUnderscorelaffUnderscoreWhiteHatNinetyFourSBDWolfGanbareGoemonTwoPracticeROM
-Practice ROM for Ganbare Goemon 2: Kiteretsu Shogun McGuiness.
+# FredUnderscoreUnderscorelaffUnderscoreUnderscoreUnderscoreUnderscoreWhiteHatNinetyFourSBDWolfGanbareGoemonTwoKiteretsuShogunMcGuinessPracticeROM
+Practice ROM for Ganbare Goemon 2: Kiteretsu Shogun McGuiness
 
--
+---
 
-Select + Y
-Refill hp to max
+- Toggle HP Container 
+  - Select + Up
 
-Select + X
-Toggle onigiri
+- Refill HP to Max
+  - Select + Y
 
-Select + L
-Toggle helmet
+- Toggle Weapon 
+  - Select + Down
 
-Select + R
-Toggle armor
+- Toggle Onigiri
+  - Select + X
 
-Select + Down
-Weapon toggle
+- Toggle Helmet
+  - Select + L
 
-X + Start
-Level Select
-(may cause glitches on Impact stages, selecting 1-1 causes crash)
+- Toggle Armor
+  - Select + R
 
-A + Start
-Exit Impact bosses
-(may cause glitches, warps, or crashes in other levels)
+- Level Select
+  - X + Start
+  - (may cause glitches in unused levels or when used in Impact Stages)
 
--
+- Exit Any Stage
+  - A + Start
 
-Infinite ryo and impact bombs
+---
 
-Start Impact bosses with 999 ryo
+- Infinite Ryo and Impact Bombs
 
-Disabled losing lives
-Disabled timer death at 00
+- Disabled losing lives
 
--
+- Disabled death when Timer reaches 00
 
-Disabled Player 2 text
-Lag counter
+- Begin Impact bosses with 999 ryo when entering from World Map
 
--
+---
 
-Level re-entrance for all fortresses and Impact stages
+- Disabled Player 2 text
 
-Disabled checkpoints
+- Kill Counter
+  
+- Lag Counter
+
+---
+
+- World Map re-entrances for all Fortresses and Impact Stages
+
+- Disabled Checkpoints
