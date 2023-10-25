@@ -50,6 +50,8 @@ Practice ROM for Ganbare Goemon 2: Kiteretsu Shōgun Magginesu
 
 ---
 
+- All Levels opened on new file
+
 - World Map re-entrances for all Fortresses and Impact Stages
 
 - Removed Checkpoints
