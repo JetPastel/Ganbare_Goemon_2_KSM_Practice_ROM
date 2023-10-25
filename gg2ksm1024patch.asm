@@ -76,11 +76,16 @@ org $83C0D7 : nop #2 ; Allowing the player to reenter past stages
 org $83FA49 : bra $3B ; Start at the start (disables checkpoints)
 
 org $80C3BA : nop #2 ;ignore "can exit levels" check
-org $80C3F9 : nop #2 ;ignore "has cleared this stage and is repeatable" check
+; org $80C3F9 : nop #2 ;ignore "has cleared this stage and is repeatable" check
 
 org $80812A : jsl infinite_resources ; Ryo and Impact Bomb Hook
 
 org $8AC645 : jsl print_kill_count : nop #2 ; on-enemy-kill hook
+
+org $BAFA65 : jsl mark_stages_completed
+
+org $80C3DF : stz !impact_in_overworld_flag : bra exit_level ; clear impact-on-map flag and skip other checks
+org $80C402 : exit_level: ;always exit if start + select was pressed
 }
 
 org $80FD40 ;bank 80 custom code location
@@ -328,6 +333,17 @@ clear_hud:
 	sta $1926
 
 	rtl
+}
+
+{
+mark_stages_completed:
+	sta $700202 ; restore hijacked instruction
+	; fill "levels completed" bitfield
+	lda #$FFFF
+	sta $700236
+	sta $700238
+	sta $70023A
+	sta $70023C
 }
 
 {
