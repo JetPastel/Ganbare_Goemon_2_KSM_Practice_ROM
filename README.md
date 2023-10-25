@@ -34,15 +34,15 @@ Practice ROM for Ganbare Goemon 2: Kiteretsu Shōgun Magginesu
 
 - Infinite Impact Bombs
 
-- Disabled losing lives
+- Removed losing lives
 
-- Disabled death when Timer reaches 00
+- Removed death when Timer reaches 00
 
 - Begin Impact bosses with 999 ryo when entering from World Map
 
 ---
 
-- Disabled Player 2 text
+- Removed Player 2 text
 
 - Kill Counter
   
@@ -52,4 +52,4 @@ Practice ROM for Ganbare Goemon 2: Kiteretsu Shōgun Magginesu
 
 - World Map re-entrances for all Fortresses and Impact Stages
 
-- Disabled Checkpoints
+- Removed Checkpoints
