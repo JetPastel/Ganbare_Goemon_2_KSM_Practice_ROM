@@ -75,7 +75,8 @@ org $83C0D7 : nop #2 ; Allowing the player to reenter past stages
 
 org $83FA49 : bra $3B ; Start at the start (disables checkpoints)
 
-org $80C3F9 : nop #2 ; Castle "Start + Select" Exits
+org $80C3BA : nop #2 ;ignore "can exit levels" check
+org $80C3F9 : nop #2 ;ignore "has cleared this stage and is repeatable" check
 
 org $80812A : jsl infinite_resources ; Ryo and Impact Bomb Hook
 
