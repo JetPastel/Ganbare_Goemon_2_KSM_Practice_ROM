@@ -3,7 +3,7 @@ lorom
 { ;inputs
 	!l      = $0020	
 	!r      = $0010
-    !x      = $0040
+	!x      = $0040
 	!a      = $0080
 	!y      = $4000
 	!b      = $8000
@@ -33,13 +33,13 @@ lorom
 	!onigiri_state = $047C
 	!weapon_state = $0460
 
-    !lives = $0498
+    	!lives = $0498
 
 	!status_bar = $1880
 
-    !impact_health = $1B48
+   	!impact_health = $1B48
 
-    !kill_counter = $1BA4
+    	!kill_counter = $1BA4
 
 	!hp = $0446
 
@@ -49,7 +49,7 @@ lorom
 
 	!impact_in_overworld_flag = $1ACC
 
-	!lag_counter = $7E7FF0
+	!lag_counter = $7EAFC0
 }
 
 { ;game state defines
