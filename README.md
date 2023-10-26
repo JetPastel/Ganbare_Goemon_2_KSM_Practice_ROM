@@ -3,7 +3,7 @@ Practice ROM for Ganbare Goemon 2: Kiteretsu Shōgun Magginesu
 
 ---
 
-- Toggle HP Container 
+- Toggle Golden Fortune Doll
   - Select + Up
 
 - Refill HP to Max
@@ -44,7 +44,7 @@ Practice ROM for Ganbare Goemon 2: Kiteretsu Shōgun Magginesu
 
 - Removed Player 2 text
 
-- Kill Counter
+- Kill ("Cat") Counter
   
 - Lag Counter
 
