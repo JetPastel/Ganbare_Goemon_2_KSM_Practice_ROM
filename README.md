@@ -32,7 +32,7 @@ Practice ROM for Ganbare Goemon 2: Kiteretsu Shōgun Magginesu
 
 - Infinite Ryo
 
-- Infinite Impact Bombs
+- Begin Impact Boss Fights with Two Bombs
 
 - Removed losing lives
 
