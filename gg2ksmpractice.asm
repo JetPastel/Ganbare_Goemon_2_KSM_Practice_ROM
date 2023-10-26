@@ -73,6 +73,8 @@ org $80E953 : jsr clear_lag_counter
 
 org $828D4C : lda #$0999 ;add ryo to boss fights
 
+org $828D55 : jsl impact_bombs : nop ; add 2 bombs to boss fights
+
 org $83C0DC : jsl clear_hud : nop ; runs as soon as you select a level from the overworld
 
 org $83F0A9 : nop #3	; don't print the flashing text for player 2
@@ -317,10 +319,21 @@ mark_stages_completed:
 }
 
 {
+
+impact_bombs:
+	sta $057C
+	lda #$0002
+	sta $D4
+
+	rtl
+
+}
+
+{
 infinite_resources:
 	lda #$9999
 	sta $7e0474 ; ryo
-	sta $0000D4 ; impact bombs
+	; sta $0000D4 ; 99 impact bombs (removed)
 
 	jml $8093af
 
