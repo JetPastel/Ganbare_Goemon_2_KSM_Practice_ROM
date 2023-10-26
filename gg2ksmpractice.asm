@@ -23,6 +23,7 @@ lorom
 	; !lag_state       = $4C ;set to 1 if in a lag frame?
     !stage_state     = $84
     !rng             = $8C
+	!current_screen  = $98 ; seems to be something slightly different in truth, like "screen to be loaded" or something like that
 	!timer           = $AE
 
     !ryo = $0474
@@ -33,13 +34,13 @@ lorom
 	!onigiri_state = $047C
 	!weapon_state = $0460
 
-    	!lives = $0498
+    !lives = $0498
 
 	!status_bar = $1880
 
    	!impact_health = $1B48
 
-    	!kill_counter = $1BA4
+    !kill_counter = $1BA4
 
 	!hp = $0446
 
@@ -48,8 +49,22 @@ lorom
 	!container = $04B4
 
 	!impact_in_overworld_flag = $1ACC
+}
 
-	!lag_counter = $7EAFC0
+{
+	; new ram
+	!lag_counter = $7E5ED0
+
+	!temp_lag_counter = $7E5ED2
+	!timer_current_room_minutes = $7E5ED4
+	!timer_current_room_seconds = $7E5ED6
+	!timer_current_room_frames = $7E5ED8
+
+	!timer_previous_room_minutes = $7E5EDA
+	!timer_previous_room_seconds = $7E5EDC
+	!timer_previous_room_frames = $7E5EDE
+
+	!previous_screen = $7E5EE0
 }
 
 { ;game state defines
@@ -67,7 +82,7 @@ org $80C3BA : nop #2 ;ignore "can exit levels" check
 org $80C3DF : stz !impact_in_overworld_flag : bra exit_level ; clear impact-on-map flag and skip other checks
 org $80C402 : exit_level: ;always exit if start + select was pressed
 
-org $80C5DC : jsr add_items_level_select : nop #2 ;start press check
+org $80C5DC : jsr every_frame_non_lag : nop #2 ;start press check
 
 org $80E953 : jsr clear_lag_counter
 
@@ -75,7 +90,7 @@ org $828D4C : lda #$0999 ;add ryo to boss fights
 
 org $828D55 : jsl impact_bombs : nop ; add 2 bombs to boss fights
 
-org $83C0DC : jsl clear_hud : nop ; runs as soon as you select a level from the overworld
+org $83C0DC : jsl on_level_entry : nop ; runs as soon as you select a level from the overworld
 
 org $83F0A9 : nop #3	; don't print the flashing text for player 2
 
@@ -89,6 +104,78 @@ org $BAFA65 : jsl mark_stages_completed
 org $80FD40 ;bank 80 custom code location
 
 { ;custom code
+every_frame_non_lag:
+	lda !game_state
+	cmp #!gs_map
+	bne +
+	; if in the world map, we treat it as a room change, but without resetting the current timer value
+	jsl timer_on_room_change
+	jmp add_items_level_select
+
++	cmp #$0009
+	beq + 
+	jmp add_items_level_select
+
++	lda $1FA0
+	cmp #$000F
+	beq +
+	jmp add_items_level_select
+
++	lda !stage_state
+	cmp #$0003
+	beq .run_timer
+
+	lda !stage_state
+	cmp #$0006
+	bne .run_timer
+	jmp add_items_level_select
+
+.run_timer:
+    ; if we've changed rooms, print the timer on screen, then reset it
+    lda !current_screen : cmp !previous_screen : beq .update_timer
+
+	; we ran out of free space here so this routine has been placed elsewhere :)
+	jsl timer_on_room_change
+
+	; reset timer. this has been placed outside of timer_on_room_change because that routine gets also called from the world map and we don't want to reset the timer there
+	lda #$0000 : sta !timer_current_room_minutes : sta !timer_current_room_seconds : sta !timer_current_room_frames
+
+    bra .done
+
+
+
+.update_timer
+	; increment frame count by 1, rollover at 60
+	; the frame counter is incremented by 1, plus the amount of lag frames that have occurred in the previous period
+	sed 
+
+	lda !timer_current_room_frames : clc : adc #$0001 : adc !temp_lag_counter : sta !timer_current_room_frames
+	cmp #$0060 : bcc .done
+	lda #$0000 : sta !timer_current_room_frames
+
+	lda !timer_current_room_seconds : clc : adc #$0001 : sta !timer_current_room_seconds
+	cmp #$0060 : bcc .done
+	lda #$0000 : sta !timer_current_room_seconds
+
+	lda !timer_current_room_minutes : clc : adc #$0001 : sta !timer_current_room_minutes
+	cmp #$0010 : bcc .done
+
+	; minutes count is 10, stop updating the timer
+	lda #$0009 : sta !timer_current_room_minutes
+	lda #$0059
+	sta !timer_current_room_seconds : sta !timer_current_room_frames
+
+.done
+	cld 
+
+	lda !current_screen : sta !previous_screen
+	lda #$0000 : sta !temp_lag_counter
+
+
+
+
+
+
 add_items_level_select:
 	lda !buttons_held ;A = buttons held
 	bit #!select      ;A & $2000
@@ -216,10 +303,18 @@ update_hud:
 
 .inc_counter:
 	sed
+
 	lda !lag_counter
 	clc
 	adc #$0001
 	sta !lag_counter
+
+	; this is used by the room timer to determine how many lag frames have just occurred
+	lda !temp_lag_counter
+	clc
+	adc #$0001
+	sta !temp_lag_counter
+
 	cld
 
 	; print the lag counter on screen
@@ -288,21 +383,15 @@ clear_lag_counter:
 }
 
 {
-clear_hud:
+on_level_entry:
+.clear_timer:
+	lda #$0000 : sta !timer_current_room_minutes : sta !timer_current_room_seconds : sta !timer_current_room_frames
+
+.clear_hud:
 	jsl $80838A 	; restore hijacked instruction
 
-	lda #$3760
-	sta $18F8
-	sta $18FA
-	sta $18FC
-	sta $18E6
-
-
-	lda #$3770
-	sta $1938
-	sta $193A
-	sta $193C
-	sta $1926
+	lda #$3760 : sta $18F8 : sta $18FA : sta $18FC : sta $18E6 : sta $18EA : sta $18EC : sta $18EE : sta $18F0 : sta $18F2
+	lda #$3770 : sta $1938 : sta $193A : sta $193C : sta $1926 : sta $192A : sta $192C : sta $192E : sta $1930 : sta $1932
 
 	rtl
 }
@@ -343,4 +432,61 @@ infinite_resources:
 	org $808B63 : nop #2 ; disable timer death
 	;org $808B65 : nop #3 ; disable timer beeps
 
+}
+
+org $87B8A0
+{
+print_timer:
+	lda !timer_previous_room_minutes
+	ora #$3760
+	sta $18EA
+
+	clc : adc #$0010
+	sta $192A
+
+
+	lda !timer_previous_room_seconds
+	lsr #4
+	ora #$3760
+	sta $18EC
+
+	clc : adc #$0010
+	sta $192C
+
+
+	lda !timer_previous_room_seconds
+	and #$000F
+	ora #$3760
+	sta $18EE
+
+	clc : adc #$0010
+	sta $192E
+
+
+	lda !timer_previous_room_frames
+	lsr #4
+	ora #$3760
+	sta $18F0
+
+	clc : adc #$0010
+	sta $1930
+
+
+	lda !timer_previous_room_frames
+	and #$000F
+	ora #$3760
+	sta $18F2
+
+	clc : adc #$0010
+	sta $1932
+
+	rts 
+
+timer_on_room_change:
+	lda !timer_current_room_minutes : sta !timer_previous_room_minutes
+	lda !timer_current_room_seconds : sta !timer_previous_room_seconds
+	lda !timer_current_room_frames : sta !timer_previous_room_frames
+
+	jsr print_timer
+	rtl 
 }
