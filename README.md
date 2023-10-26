@@ -44,7 +44,7 @@ Practice ROM for Ganbare Goemon 2: Kiteretsu Shōgun Magginesu
 
 - Removed Player 2 text
 
-- Kill ("Cat") Counter
+- Kill Counter
   
 - Lag Counter
 
