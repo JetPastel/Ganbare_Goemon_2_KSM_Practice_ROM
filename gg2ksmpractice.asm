@@ -16,31 +16,31 @@ lorom
 }
 
 { ;ram
-    !buttons_held    = $36
-    !buttons_pressed = $38
-    !game_state      = $42
-    !frame_counter   = $4A
+	!buttons_held    = $36
+	!buttons_pressed = $38
+	!game_state      = $42
+	!frame_counter   = $4A
 	; !lag_state       = $4C ;set to 1 if in a lag frame?
-    !stage_state     = $84
-    !rng             = $8C
+	!stage_state     = $84
+	!rng             = $8C
 	!current_screen  = $98 ; seems to be something slightly different in truth, like "screen to be loaded" or something like that
 	!timer           = $AE
 
-    !ryo = $0474
-    !helmet_state = $0478
-    !helmet_count = $0479
-    !armor_state  = $047A
-    !armor_count  = $047B
+	!ryo = $0474
+	!helmet_state = $0478
+	!helmet_count = $0479
+	!armor_state  = $047A
+	!armor_count  = $047B
 	!onigiri_state = $047C
 	!weapon_state = $0460
 
-    !lives = $0498
+	!lives = $0498
 
 	!status_bar = $1880
 
-   	!impact_health = $1B48
+	!impact_health = $1B48
 
-    !kill_counter = $1BA4
+	!kill_counter = $1BA4
 
 	!hp = $0446
 
@@ -110,29 +110,30 @@ every_frame_non_lag:
 	bne +
 	; if in the world map, we treat it as a room change, but without resetting the current timer value
 	jsl timer_on_room_change
-	jmp add_items_level_select
+	bra .skip_timer
 
 +	cmp #$0009
 	beq + 
-	jmp add_items_level_select
+	bra .skip_timer
 
 +	lda $1FA0
 	cmp #$000F
 	beq +
-	jmp add_items_level_select
+	bra .skip_timer
 
 +	lda !stage_state
 	cmp #$0003
 	beq .run_timer
 
-	lda !stage_state
 	cmp #$0006
 	bne .run_timer
+
+.skip_timer:
 	jmp add_items_level_select
 
 .run_timer:
-    ; if we've changed rooms, print the timer on screen, then reset it
-    lda !current_screen : cmp !previous_screen : beq .update_timer
+	; if we've changed rooms, print the timer on screen, then reset it
+	lda !current_screen : cmp !previous_screen : beq .update_timer
 
 	; we ran out of free space here so this routine has been placed elsewhere :)
 	jsl timer_on_room_change
@@ -140,13 +141,13 @@ every_frame_non_lag:
 	; reset timer. this has been placed outside of timer_on_room_change because that routine gets also called from the world map and we don't want to reset the timer there
 	lda #$0000 : sta !timer_current_room_minutes : sta !timer_current_room_seconds : sta !timer_current_room_frames
 
-    bra .done
+	bra .done
 
 
 
 .update_timer
-	; increment frame count by 1, rollover at 60
-	; the frame counter is incremented by 1, plus the amount of lag frames that have occurred in the previous period
+	;increment frame count by 1, rollover at 60
+	;the frame counter is incremented by 1, plus the amount of lag frames that have occurred in the previous period
 	sed 
 
 	lda !timer_current_room_frames : clc : adc #$0001 : adc !temp_lag_counter : sta !timer_current_room_frames
@@ -193,44 +194,44 @@ add_items_level_select:
 	; fall through to continue to check for button presses
 
 .r_not_pressed:
-    ;check for l press
-    lda !buttons_pressed
-    bit #!l
-    beq .l_not_pressed
+	;check for l press
+	lda !buttons_pressed
+	bit #!l
+	beq .l_not_pressed
 
-    ;l pressed. toggle helmet
-        lda !helmet_state : inc : and #$0003 : asl : tax ;X: next helmet state
+	;l pressed. toggle helmet
+		lda !helmet_state : inc : and #$0003 : asl : tax ;X: next helmet state
 		lda.l .armor_state,X : sta !helmet_state
-        ; fall through to continue to check for button presses
+		; fall through to continue to check for button presses
 
 .l_not_pressed:
 
 ;check for x press
-    lda !buttons_pressed
-    bit #!x
-    beq .x_not_pressed
-        
-	    ;X pressed. toggle onigiri
-        lda !onigiri_state : inc : and #$0003 : sta !onigiri_state
+	lda !buttons_pressed
+	bit #!x
+	beq .x_not_pressed
+		
+		;X pressed. toggle onigiri
+		lda !onigiri_state : inc : and #$0003 : sta !onigiri_state
 
 .x_not_pressed
 
 ;check for y press (not working yet)
-    lda !buttons_pressed
-    bit #!y;    beq .y_not_pressed
+	lda !buttons_pressed
+	bit #!y;    beq .y_not_pressed
 	beq .y_not_pressed
-        
-   ;Y pressed. toggle hp
-       lda !container : sta !hp
+		
+;Y pressed. toggle hp
+	lda !container : sta !hp
 
 .y_not_pressed		
 
 	lda !buttons_pressed
-    bit #!down
-    beq .down_not_pressed
-        
-	    ;down pressed. toggle weapon
-       lda !weapon_state : inc : and #$0003 : sta !weapon_state
+	bit #!down
+	beq .down_not_pressed
+		
+		;down pressed. toggle weapon
+	lda !weapon_state : inc : and #$0003 : sta !weapon_state
 
 .down_not_pressed
 	lda !buttons_pressed
@@ -251,26 +252,26 @@ add_items_level_select:
 .select_not_pressed: ;check for start press
 	lda !buttons_pressed
 	bit #!start
-    bne .start_pressed
+	bne .start_pressed
 
 	rts ;start or select not pressed. resume as normal
 
 .start_pressed:
 	lda !buttons_held
-    bit #!x
+	bit #!x
 	bne .level_select
 
 	;normal start press, pause the game
 	inc ;clear zero flag so game pauses
-    rts
+	rts
 
 .level_select:
-    lda #$0007 : sta !game_state
-    pla ;adjust stack so rtl goes to the right place
-    rtl
+	lda #$0007 : sta !game_state
+	pla ;adjust stack so rtl goes to the right place
+	rtl
 
 .armor_state:
-    db 0, 0
+	db 0, 0
 	db 1, 1
 	db 2, 3
 	db 3, 5
@@ -279,6 +280,9 @@ add_items_level_select:
 	db 0, 0
 	db 1, 1
 	db 2, 2
+
+;test:
+;rtl
 
 }
 {
@@ -297,7 +301,6 @@ update_hud:
 	cmp #$0003
 	beq .inc_counter
 
-	lda !stage_state
 	cmp #$0006
 	bne .return
 
