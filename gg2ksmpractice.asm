@@ -99,6 +99,9 @@ org $83FA49 : bra $3B ; Start at the start (disables checkpoints)
 org $8AC645 : jsl print_kill_count : nop #2 ; on-enemy-kill hook
 
 org $BAFA65 : jsl mark_stages_completed
+
+org $83F4DB : bra $7B : nop ; skip updating ryo and lives hud graphics every frame, reduces lag
+;org $83F53C : bra $1A 
 }
 
 org $80FD40 ;bank 80 custom code location
