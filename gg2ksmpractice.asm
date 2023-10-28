@@ -76,6 +76,8 @@ lorom
 { ;hijacks / patches
 org $80810C : jsr update_hud
 
+org $83C0D7 : nop #2 ; Allowing the player to reenter past stages
+
 org $80812A : jsl infinite_resources ; Ryo and Impact Bomb Hook
 
 org $80C3BA : nop #2 ;ignore "can exit levels" check
