@@ -496,9 +496,14 @@ print_timer:
 {
 ; without this, the hud would display garbage where ryo and lives are located (due to those things not being updated every frame anymore)
 clear_hud_stats:
-	sep #$20
-	lda #$00 : sta $1888 : sta $188A : sta $188C : sta $188E : sta $18C8 : sta $18CA : sta $18CC : sta $18CE
-	sta $190C : sta $190E : sta $194C : sta $194E
-	rep #$20
-	rtl
+    sep #$20
+    lda #$00 : sta $1888 : sta $188A : sta $188C : sta $188E : sta $18C8 : sta $18CA : sta $18CC : sta $18CE
+    sta $190C : sta $190E : sta $194C : sta $194E
+    rep #$20
+
+    rtl
+    
+    org $83F34A : lda #$00 ;remove ryo symbol
+    org $83F34F : lda #$00 ;remove ryo symbol
+
 }
