@@ -4,4 +4,4 @@ set rom_name=FredUnderscoreUnderscorelaffUnderscoreWhiteHatNinetyFourSBDWolfGanb
 IF NOT EXIST rom_output mkdir rom_output
 del /q rom_output
 copy rom_source\source.sfc rom_output\%rom_name%
-tools\asar\asar.exe --no-title-check gg2ksmpractice.asm rom_output\%rom_name%
+tools\asar\asar.exe --fix-checksum=off gg2ksmpractice.asm rom_output\%rom_name%
