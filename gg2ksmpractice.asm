@@ -20,10 +20,11 @@ lorom
 	!buttons_pressed = $38
 	!game_state      = $42
 	!frame_counter   = $4A
-	; !lag_state       = $4C ;set to 1 if in a lag frame?
+	;!lag_state      = $4C ;set to 1 if in a lag frame?
 	!stage_state     = $84
 	!rng             = $8C
 	!current_screen  = $98 ; seems to be something slightly different in truth, like "screen to be loaded" or something like that
+	;!current_level  = $F4 ; ?
 	!timer           = $AE
 
 	!ryo = $0474
@@ -35,6 +36,8 @@ lorom
 	!weapon_state = $0460
 
 	!lives = $0498
+
+	!final_boss_health = $05C6
 
 	!status_bar = $1880
 
@@ -49,6 +52,8 @@ lorom
 	!container = $04B4
 
 	!impact_in_overworld_flag = $1ACC
+
+	!screen_brightness = $1FA0
 }
 
 {
@@ -60,11 +65,7 @@ lorom
 	!timer_current_room_seconds = $7E5ED6
 	!timer_current_room_frames = $7E5ED8
 
-	!timer_previous_room_minutes = $7E5EDA
-	!timer_previous_room_seconds = $7E5EDC
-	!timer_previous_room_frames = $7E5EDE
-
-	!previous_screen = $7E5EE0
+	!previous_screen = $7E5EDA
 }
 
 { ;game state defines
@@ -80,107 +81,41 @@ org $83C0D7 : nop #2 ; Allowing the player to reenter past stages
 
 org $80812A : jsl infinite_resources ; Ryo and Impact Bomb Hook
 
+org $808580 : jml every_overworld_frame
+
+org $80874A : jsl every_gameplay_frame
+
+org $808B63 : nop #2 ; disable timer death
+
 org $80C3BA : nop #2 ;ignore "can exit levels" check
 org $80C3DF : stz !impact_in_overworld_flag : bra exit_level ; clear impact-on-map flag and skip other checks
 org $80C402 : exit_level: ;always exit if start + select was pressed
 
 org $80C5DC : jsr every_frame_non_lag : nop #2 ;start press check
 
-org $80E953 : jsr clear_lag_counter
-
 org $828D4C : lda #$0999 ;add ryo to boss fights
 
 org $828D55 : jsl impact_bombs : nop ; add 2 bombs to boss fights
 
+org $83ACB6 : nop #2 ; stop lives from decreasing
+
 org $83C0DC : jsl on_level_entry : nop ; runs as soon as you select a level from the overworld
 
 org $83F0A9 : nop #3	; don't print the flashing text for player 2
+
+org $83F4DB : bra $7B : nop ; skip updating ryo and lives hud graphics every frame, reduces lag
 
 org $83FA49 : bra $3B ; Start at the start (disables checkpoints)
 
 org $8AC645 : jsl print_kill_count : nop #2 ; on-enemy-kill hook
 
 org $BAFA65 : jsl mark_stages_completed
-
-org $83F4DB : bra $7B : nop ; skip updating ryo and lives hud graphics every frame, reduces lag
-;org $83F53C : bra $1A 
 }
 
 org $80FD40 ;bank 80 custom code location
 
 { ;custom code
 every_frame_non_lag:
-	lda !game_state
-	cmp #!gs_map
-	bne +
-	; if in the world map, we treat it as a room change, but without resetting the current timer value
-	jsl timer_on_room_change
-	bra .skip_timer
-
-+	cmp #$0009
-	beq + 
-	bra .skip_timer
-
-+	lda $1FA0
-	cmp #$000F
-	beq +
-	bra .skip_timer
-
-+	lda !stage_state
-	cmp #$0003
-	beq .run_timer
-
-	cmp #$0006
-	bne .run_timer
-
-.skip_timer:
-	jmp add_items_level_select
-
-.run_timer:
-	; if we've changed rooms, print the timer on screen, then reset it
-	lda !current_screen : cmp !previous_screen : beq .update_timer
-
-	; we ran out of free space here so this routine has been placed elsewhere :)
-	jsl timer_on_room_change
-
-	; reset timer. this has been placed outside of timer_on_room_change because that routine gets also called from the world map and we don't want to reset the timer there
-	lda #$0000 : sta !timer_current_room_minutes : sta !timer_current_room_seconds : sta !timer_current_room_frames
-
-	bra .done
-
-
-
-.update_timer
-	;increment frame count by 1, rollover at 60
-	;the frame counter is incremented by 1, plus the amount of lag frames that have occurred in the previous period
-	sed 
-
-	lda !timer_current_room_frames : clc : adc #$0001 : adc !temp_lag_counter : sta !timer_current_room_frames
-	cmp #$0060 : bcc .done
-	lda #$0000 : sta !timer_current_room_frames
-
-	lda !timer_current_room_seconds : clc : adc #$0001 : sta !timer_current_room_seconds
-	cmp #$0060 : bcc .done
-	lda #$0000 : sta !timer_current_room_seconds
-
-	lda !timer_current_room_minutes : clc : adc #$0001 : sta !timer_current_room_minutes
-	cmp #$0010 : bcc .done
-
-	; minutes count is 10, stop updating the timer
-	lda #$0009 : sta !timer_current_room_minutes
-	lda #$0059
-	sta !timer_current_room_seconds : sta !timer_current_room_frames
-
-.done
-	cld 
-
-	lda !current_screen : sta !previous_screen
-	lda #$0000 : sta !temp_lag_counter
-
-
-
-
-
 
 add_items_level_select:
 	lda !buttons_held ;A = buttons held
@@ -223,7 +158,7 @@ add_items_level_select:
 
 ;check for y press (not working yet)
 	lda !buttons_pressed
-	bit #!y;    beq .y_not_pressed
+	bit #!y
 	beq .y_not_pressed
 		
 ;Y pressed. toggle hp
@@ -285,11 +220,80 @@ add_items_level_select:
 	db 0, 0
 	db 1, 1
 	db 2, 2
+}
 
-;test:
-;rtl
+{
+every_gameplay_frame:
+; timer main
++	lda !stage_state
+	; don't run if outside of gameplay
+	cmp #$0007
+	bcs .done
+
+	cmp #$0003
+	bcc .done
+
+.run_timer:
+	; if we're on the final boss and its health has reached 0, print the timer on screen
+	lda !current_screen : cmp #$0029 : bne +
+	lda !final_boss_health : bne +
+
+	jsl print_timer
+
+	bra .done
+
+	; if we've changed rooms, print the timer on screen to show progress
++	lda !current_screen : cmp !previous_screen : beq .update_timer
+
+	jsl print_timer
+
+	bra .done
+
+.update_timer
+	;increment frame count by 1, rollover at 60
+	;the frame counter is incremented by 1, plus the amount of lag frames that have occurred in the previous period
+	sed 
+
+	lda !timer_current_room_frames : clc : adc #$0001 : adc !temp_lag_counter : sta !timer_current_room_frames
+	cmp #$0060 : bcc .done
+	lda #$0000 : sta !timer_current_room_frames
+
+	lda !timer_current_room_seconds : clc : adc #$0001 : sta !timer_current_room_seconds
+	cmp #$0060 : bcc .done
+	lda #$0000 : sta !timer_current_room_seconds
+
+	lda !timer_current_room_minutes : clc : adc #$0001 : sta !timer_current_room_minutes
+	cmp #$0010 : bcc .done
+
+	; minutes count is 10, stop updating the timer
+	lda #$0009 : sta !timer_current_room_minutes
+	lda #$0059
+	sta !timer_current_room_seconds : sta !timer_current_room_frames
+
+.done
+	cld 
+
+	lda !current_screen : sta !previous_screen
+	lda #$0000 : sta !temp_lag_counter
+
+	; restore hijacked instruction
+	jsl $80C374
+
+	rtl 
 
 }
+
+{
+every_overworld_frame:
+	jsl print_timer
+
+	jsl clear_hud_stats
+
+	; restore hijacked instruction
+	jml $83BE16
+}
+
+
 {
 update_hud:
 	jsr $8240
@@ -392,12 +396,13 @@ clear_lag_counter:
 
 {
 on_level_entry:
-.clear_timer:
-	lda #$0000 : sta !timer_current_room_minutes : sta !timer_current_room_seconds : sta !timer_current_room_frames
-
-.clear_hud:
+.clear_timer_and_lag:
 	jsl $80838A 	; restore hijacked instruction
 
+	lda #$0000 : sta !timer_current_room_minutes : sta !timer_current_room_seconds : sta !timer_current_room_frames
+	sta !lag_counter
+
+.clear_hud:
 	lda #$3760 : sta $18F8 : sta $18FA : sta $18FC : sta $18E6 : sta $18EA : sta $18EC : sta $18EE : sta $18F0 : sta $18F2
 	lda #$3770 : sta $1938 : sta $193A : sta $193C : sta $1926 : sta $192A : sta $192C : sta $192E : sta $1930 : sta $1932
 
@@ -435,17 +440,14 @@ infinite_resources:
 	jml $8093af
 
 	rtl
-
-	org $83ACB6 : nop #2 ; stop lives from decreasing
-	org $808B63 : nop #2 ; disable timer death
-	;org $808B65 : nop #3 ; disable timer beeps
-
 }
 
-org $87B8A0
+warnpc $80FFAD
+
+org $8CF450
 {
 print_timer:
-	lda !timer_previous_room_minutes
+	lda !timer_current_room_minutes
 	ora #$3760
 	sta $18EA
 
@@ -453,7 +455,7 @@ print_timer:
 	sta $192A
 
 
-	lda !timer_previous_room_seconds
+	lda !timer_current_room_seconds
 	lsr #4
 	ora #$3760
 	sta $18EC
@@ -462,7 +464,7 @@ print_timer:
 	sta $192C
 
 
-	lda !timer_previous_room_seconds
+	lda !timer_current_room_seconds
 	and #$000F
 	ora #$3760
 	sta $18EE
@@ -471,7 +473,7 @@ print_timer:
 	sta $192E
 
 
-	lda !timer_previous_room_frames
+	lda !timer_current_room_frames
 	lsr #4
 	ora #$3760
 	sta $18F0
@@ -480,7 +482,7 @@ print_timer:
 	sta $1930
 
 
-	lda !timer_previous_room_frames
+	lda !timer_current_room_frames
 	and #$000F
 	ora #$3760
 	sta $18F2
@@ -488,13 +490,15 @@ print_timer:
 	clc : adc #$0010
 	sta $1932
 
-	rts 
-
-timer_on_room_change:
-	lda !timer_current_room_minutes : sta !timer_previous_room_minutes
-	lda !timer_current_room_seconds : sta !timer_previous_room_seconds
-	lda !timer_current_room_frames : sta !timer_previous_room_frames
-
-	jsr print_timer
 	rtl 
+}
+
+{
+; without this, the hud would display garbage where ryo and lives are located (due to those things not being updated every frame anymore)
+clear_hud_stats:
+	sep #$20
+	lda #$00 : sta $1888 : sta $188A : sta $188C : sta $188E : sta $18C8 : sta $18CA : sta $18CC : sta $18CE
+	sta $190C : sta $190E : sta $194C : sta $194E
+	rep #$20
+	rtl
 }
