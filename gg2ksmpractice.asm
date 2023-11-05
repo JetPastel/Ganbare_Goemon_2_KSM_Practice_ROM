@@ -39,6 +39,8 @@ lorom
 
 	!final_boss_health = $05C6
 
+	!impact_x_position = $0E5A
+
 	!status_bar = $1880
 
 	!impact_health = $1B48
@@ -225,29 +227,19 @@ add_items_level_select:
 {
 every_gameplay_frame:
 ; timer main
-+	lda !stage_state
-	; don't run if outside of gameplay
-	cmp #$0007
-	bcs .done
-
-	cmp #$0003
-	bcc .done
 
 .run_timer:
 	; if we're on the final boss and its health has reached 0, print the timer on screen
 	lda !current_screen : cmp #$0029 : bne +
 	lda !final_boss_health : bne +
+	jmp .print_timer_without_advancing
 
-	jsl print_timer
-
-	bra .done
+	; if we're in an impact stage and we're exiting the screen, print the timer on screen
++	lda !stage_state : cmp #$0004 : bne + ; this check might not actually be necessary
+	lda !impact_x_position : cmp #$12C : bcs .print_timer_without_advancing
 
 	; if we've changed rooms, print the timer on screen to show progress
-+	lda !current_screen : cmp !previous_screen : beq .update_timer
-
-	jsl print_timer
-
-	bra .done
++	lda !current_screen : cmp !previous_screen : bne .print_timer_without_advancing
 
 .update_timer
 	;increment frame count by 1, rollover at 60
@@ -280,6 +272,10 @@ every_gameplay_frame:
 	jsl $80C374
 
 	rtl 
+
+.print_timer_without_advancing:
+	jsl print_timer
+	bra .done
 
 }
 
