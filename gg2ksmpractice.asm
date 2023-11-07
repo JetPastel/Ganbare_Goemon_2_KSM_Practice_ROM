@@ -16,16 +16,17 @@ lorom
 }
 
 { ;ram
-	!buttons_held    = $36
-	!buttons_pressed = $38
-	!game_state      = $42
-	!frame_counter   = $4A
-	;!lag_state      = $4C ;set to 1 if in a lag frame?
-	!stage_state     = $84
-	!rng             = $8C
-	!current_screen  = $98 ; seems to be something slightly different in truth, like "screen to be loaded" or something like that
-	;!current_level  = $F4 ; ?
-	!timer           = $AE
+	!buttons_held        = $36
+	!buttons_pressed     = $38
+	!game_state          = $42
+	!frame_counter       = $4A
+	;!lag_state          = $4C ;set to 1 if in a lag frame?
+	!stage_state         = $84
+	!rng                 = $8C
+	!current_screen      = $98 ; seems to be something slightly different in truth, like "screen to be loaded" or something like that
+	!current_screen_long = $7E0098
+	;!current_level      = $F4 ; ?
+	!timer               = $AE
 
 	!ryo = $0474
 	!helmet_state = $0478
@@ -37,7 +38,16 @@ lorom
 
 	!lives = $0498
 
+	!twilight_ichigo_state = $059A
+	
+	!kabuki_health = $05C6
+	!kabuki_dracula_health = $05C6
+	!mask_ninja_health = $05C6
 	!final_boss_health = $05C6
+
+	!mcguinness_health = $0626
+
+	!marble_red_hp = $0AA6
 
 	!impact_x_position = $0E5A
 
@@ -68,6 +78,9 @@ lorom
 	!timer_current_room_frames = $7E5ED8
 
 	!previous_screen = $7E5EDA
+
+	!print_timer_flag = $7E5EDC
+	!do_not_run_timer_flag = $7E5EDE
 }
 
 { ;game state defines
@@ -103,18 +116,28 @@ org $83ACB6 : nop #2 ; stop lives from decreasing
 
 org $83C0DC : jsl on_level_entry : nop ; runs as soon as you select a level from the overworld
 
+org $83D2BB : jsl on_impact_autoscroller_end
+
 org $83F0A9 : nop #3	; don't print the flashing text for player 2
+
+org $83F2F2 : jsl stop_timer_boss : nop #14
+
+org $83F34A : lda #$00 ;remove ryo symbol
+
+org $83F34F : lda #$00 ;remove ryo symbol
 
 org $83F4DB : bra $7B : nop ; skip updating ryo and lives hud graphics every frame, reduces lag
 
 org $83FA49 : bra $3B ; Start at the start (disables checkpoints)
+
+org $84ABD3 : jsl on_impact_cutscene_end
 
 org $8AC645 : jsl print_kill_count : nop #2 ; on-enemy-kill hook
 
 org $BAFA65 : jsl mark_stages_completed
 }
 
-org $80FD40 ;bank 80 custom code location
+org $80FD30 ;bank 80 custom code location
 
 { ;custom code
 every_frame_non_lag:
@@ -229,14 +252,20 @@ every_gameplay_frame:
 ; timer main
 
 .run_timer:
-	; if we're on the final boss and its health has reached 0, print the timer on screen
-	lda !current_screen : cmp #$0029 : bne +
-	lda !final_boss_health : bne +
-	jmp .print_timer_without_advancing
+	; if the screen is pitch black, that probably means we've gone through a transition of some kind. clear !do_not_run_timer_flag.
+	; this helps clear the flag when going from castle to impact autoscroller.
+	lda !screen_brightness : bne +
+	; expecting the accumulator to be #$0000 since this will run if the screen brightness is #$0000
+	sta !do_not_run_timer_flag
+	jmp .done
 
-	; if we're in an impact stage and we're exiting the screen, print the timer on screen
-+	lda !stage_state : cmp #$0004 : bne + ; this check might not actually be necessary
-	lda !impact_x_position : cmp #$12C : bcs .print_timer_without_advancing
+	; if fading into a stage from the overworld, don't run the timer
++	lda !stage_state : cmp #$0002 : bcs +
+	jmp .done
+
+	; if !do_not_run_timer_flag is set, do not print the timer. this is normally set after defeating boss.
++	lda !do_not_run_timer_flag : beq +
+	jmp .done
 
 	; if we've changed rooms, print the timer on screen to show progress
 +	lda !current_screen : cmp !previous_screen : bne .print_timer_without_advancing
@@ -392,11 +421,11 @@ clear_lag_counter:
 
 {
 on_level_entry:
-.clear_timer_and_lag:
+
 	jsl $80838A 	; restore hijacked instruction
 
-	lda #$0000 : sta !timer_current_room_minutes : sta !timer_current_room_seconds : sta !timer_current_room_frames
-	sta !lag_counter
+.clear_timer_and_lag:
+	jsl clear_timer_and_lag
 
 .clear_hud:
 	lda #$3760 : sta $18F8 : sta $18FA : sta $18FC : sta $18E6 : sta $18EA : sta $18EC : sta $18EE : sta $18F0 : sta $18F2
@@ -498,8 +527,87 @@ clear_hud_stats:
     rep #$20
 
     rtl
-    
-    org $83F34A : lda #$00 ;remove ryo symbol
-    org $83F34F : lda #$00 ;remove ryo symbol
+}
+
+{
+stop_timer_boss:
+	sep #$20
+	; couldn't use !current_screen because the D register is different here
+
+	; don't do any of this if we're in the first boss and it hasn't been killed
+	lda !current_screen_long : cmp #$0C : bne +
+	lda !marble_red_hp : bne .done
+	bra .on_boss_final_hit
+
+	; don't do any of this if we're in the second boss and it hasn't been killed
++	lda !current_screen_long : cmp #$19 : bne +
+	lda !kabuki_health : bne .done
+	bra .on_boss_final_hit
+
+	; don't do any of this if we're in the third boss and it hasn't been killed
++	lda !current_screen_long : cmp #$21 : bne +
+	lda !twilight_ichigo_state : cmp #$01 : bne .done
+	bra .on_boss_final_hit
+
+	; don't do any of this if we're in the fourth boss and it hasn't been killed
++	lda !current_screen_long : cmp #$20 : bne +
+	lda !mask_ninja_health : bne .done
+	bra .on_boss_final_hit
+
+	; don't do any of this if we're in the mcguinness boss and it hasn't been killed
++	lda !current_screen_long : cmp #$2F : bne +
+	lda !mcguinness_health : cmp #$01 : bne .done
+	bra .on_boss_final_hit
+
+	; don't do any of this if we're in the dracula boss and it hasn't been killed
++	lda !current_screen_long : cmp #$77 : bne +
+	lda !kabuki_dracula_health : bne .done
+	bra .on_boss_final_hit
+
+	; don't do any of this if we're in the final boss and its health isn't 0
++	lda !current_screen_long : cmp #$29 : bne .done
+	lda !final_boss_health : bne .done
+
+
+.on_boss_final_hit:
+	rep #$20
+	lda #$0001 : sta !do_not_run_timer_flag
+	jsl print_timer
+	jsl clear_timer_and_lag
+
+.done:
+	rep #$20
+	rtl
+}
+
+{
+on_impact_autoscroller_end:
+	lda #$0001 : sta !do_not_run_timer_flag
+	jsl print_timer
+	jsl clear_timer_and_lag
+
+	; restore hijacked instruction
+	jsl $80BC89
+
+	rtl
+}
+
+{
+	on_impact_cutscene_end:
+	jsl clear_timer_and_lag
+
+	; restore hijacked instruction
+	jsl $84AB46
+
+	rtl
 
 }
+
+{
+clear_timer_and_lag:
+	lda #$0000 : sta !timer_current_room_minutes : sta !timer_current_room_seconds : sta !timer_current_room_frames
+	sta !lag_counter
+	rtl 
+}
+
+warnpc $8CFA00
