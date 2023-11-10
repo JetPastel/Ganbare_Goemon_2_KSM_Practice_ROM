@@ -20,8 +20,9 @@ lorom
 	!buttons_pressed     = $38
 	!game_state          = $42
 	!frame_counter       = $4A
-	;!lag_state          = $4C ;set to 1 if in a lag frame?
+	;!lag_state          = $4C ; set to 1 if in a lag frame?
 	!stage_state         = $84
+	!stage_state_long    = $7E0084
 	!rng                 = $8C
 	!current_screen      = $98 ; seems to be something slightly different in truth, like "screen to be loaded" or something like that
 	!current_screen_long = $7E0098
@@ -90,7 +91,7 @@ lorom
 }
 
 { ;hijacks / patches
-org $80810C : jsr update_hud
+org $80810C : jsr on_lag_frame
 
 org $83C0D7 : nop #2 ; Allowing the player to reenter past stages
 
@@ -320,21 +321,30 @@ every_overworld_frame:
 
 
 {
-update_hud:
+on_lag_frame:
+	; restore hijacked instruction
 	jsr $8240
 
+	; don't run if not in the middle of gameplay
 	lda !game_state
 	cmp #$0009
 	bne .return
 
+	; don't run if the screen brightness isn't full
 	lda $1FA0
 	cmp #$000F
 	bne .return
 
 	lda !stage_state
+	; normal stage
 	cmp #$0003
 	beq .inc_counter
 
+	; impact autoscroller
+	cmp #$0004
+	beq .inc_counter
+
+	; impact boss
 	cmp #$0006
 	bne .return
 
@@ -430,6 +440,8 @@ on_level_entry:
 .clear_hud:
 	lda #$3760 : sta $18F8 : sta $18FA : sta $18FC : sta $18E6 : sta $18EA : sta $18EC : sta $18EE : sta $18F0 : sta $18F2
 	lda #$3770 : sta $1938 : sta $193A : sta $193C : sta $1926 : sta $192A : sta $192C : sta $192E : sta $1930 : sta $1932
+
+	lda #$3710 : sta $1928 : sta $1934 : sta $1936
 
 	rtl
 }
@@ -532,12 +544,22 @@ clear_hud_stats:
 {
 stop_timer_boss:
 	sep #$20
-	; couldn't use !current_screen because the D register is different here
+	; couldn't use !current_screen and !stage_state because the D register is different here
+
+	; if on impact boss
+	lda !stage_state_long : cmp #$06 : bne +
+	jmp .on_impact_final_hit
+
+	; if in first town
++	lda !current_screen_long : cmp #$30 : bne +
+	jmp .done
+
 
 	; don't do any of this if we're in the first boss and it hasn't been killed
-	lda !current_screen_long : cmp #$0C : bne +
-	lda !marble_red_hp : bne .done
-	bra .on_boss_final_hit
++	lda !current_screen_long : cmp #$0C : bne +
+	lda !marble_red_hp : beq ++
+	jmp .done
+++	jmp .on_boss_final_hit
 
 	; don't do any of this if we're in the second boss and it hasn't been killed
 +	lda !current_screen_long : cmp #$19 : bne +
@@ -565,18 +587,44 @@ stop_timer_boss:
 	bra .on_boss_final_hit
 
 	; don't do any of this if we're in the final boss and its health isn't 0
-+	lda !current_screen_long : cmp #$29 : bne .done
++	lda !current_screen_long : cmp #$29 : bne .skip		; if all the checks fail, we're outside a boss stage and the hud should get cleared regularly
 	lda !final_boss_health : bne .done
-
 
 .on_boss_final_hit:
 	rep #$20
 	lda #$0001 : sta !do_not_run_timer_flag
 	jsl print_timer
 	jsl clear_timer_and_lag
+	bra .done
+
+.on_impact_final_hit:
+	rep #$20
+	lda #$0001 : sta !do_not_run_timer_flag
+	jsl print_timer
+	jsl clear_timer
 
 .done:
 	rep #$20
+	rtl
+
+.skip:
+	rep #$20
+
+	; restore hijacked instructions
+	; this makes it so that the hud will be cleared normally if we're not dealing the final blow to a boss
+	lda #$3710
+-	sta $42,X
+	dex 
+	dex 
+	bpl -
+	ldx #$0016
+-	sta $82,X
+	dex 
+	dex 
+	bpl -
+
+	sta $188A : sta $188C : sta $188E
+
 	rtl
 }
 
@@ -593,7 +641,7 @@ on_impact_autoscroller_end:
 }
 
 {
-	on_impact_cutscene_end:
+on_impact_cutscene_end:
 	jsl clear_timer_and_lag
 
 	; restore hijacked instruction
@@ -607,6 +655,12 @@ on_impact_autoscroller_end:
 clear_timer_and_lag:
 	lda #$0000 : sta !timer_current_room_minutes : sta !timer_current_room_seconds : sta !timer_current_room_frames
 	sta !lag_counter
+	rtl 
+}
+
+{
+clear_timer:
+	lda #$0000 : sta !timer_current_room_minutes : sta !timer_current_room_seconds : sta !timer_current_room_frames
 	rtl 
 }
 

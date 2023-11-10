@@ -1,4 +1,4 @@
-set rom_version=1.0_timerbeta2
+set rom_version=1.0
 set rom_name=FredUnderscoreUnderscorelaffUnderscoreWhiteHatNinetyFourSBDWolfGanbareGoemonTwoPracticeROM_v%rom_version%.sfc
 
 IF NOT EXIST rom_output mkdir rom_output
